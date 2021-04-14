@@ -43,6 +43,7 @@ void	initcmd(void*);
 Channel* initkbd(void);
 
 char		*fontname;
+char		*wallpaper_path;
 
 enum
 {
@@ -112,7 +113,7 @@ derror(Display*, char *errorstr)
 void
 usage(void)
 {
-	fprint(2, "usage: rio [-b] [-f font] [-i initcmd] [-k kbdcmd] [-s]\n");
+	fprint(2, "usage: rio [-b] [-f font] [-w wallpaper] [-i initcmd] [-k kbdcmd] [-s]\n");
 	exits("usage");
 }
 
@@ -123,6 +124,7 @@ threadmain(int argc, char *argv[])
 	char buf[256];
 	Image *i;
 	Rectangle r;
+	int wall_fd;
 
 	if(strstr(argv[0], ".out") == nil){
 		menu3str[Exit] = nil;
@@ -137,6 +139,9 @@ threadmain(int argc, char *argv[])
 		break;
 	case 'f':
 		fontname = EARGF(usage());
+		break;
+	case 'w':
+		wallpaper_path = EARGF(usage());
 		break;
 	case 'i':
 		initstr = EARGF(usage());
@@ -162,6 +167,8 @@ threadmain(int argc, char *argv[])
 		startdir = estrdup(buf);
 	if(fontname == nil)
 		fontname = getenv("font");
+	if(wallpaper_path == nil)
+		wallpaper_path = getenv("wallpaper");
 	s = getenv("tabstop");
 	if(s != nil)
 		maxtab = strtol(s, nil, 0);
@@ -186,6 +193,19 @@ threadmain(int argc, char *argv[])
 		exits("display open");
 	}
 	iconinit();
+	
+	if(wallpaper_path != nil){
+		if((wall_fd = open(wallpaper_path, OREAD)) >= 0){
+			/*
+			 * I have no idea what the last argument of readimage should be
+			 * FIXME ? with 0 works
+			 */
+			Image *tmp = background;
+			if((background = readimage(display, wall_fd, 0)) == nil)
+				background = tmp;
+			close(wall_fd);
+		}
+	}
 
 	exitchan = chancreate(sizeof(int), 0);
 	winclosechan = chancreate(sizeof(Window*), 0);
